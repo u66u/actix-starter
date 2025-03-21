@@ -1,16 +1,17 @@
-use std::future::{ready, Ready};
-use uuid::Uuid;
 use chrono::NaiveDateTime;
+use std::future::{ready, Ready};
+use std::time::Instant;
+use uuid::Uuid;
 
 use actix_identity::Identity;
 use actix_web::{
-    dev::Payload, post, web, Error, FromRequest, HttpMessage, HttpRequest, HttpResponse,
+    dev::Payload, get, post, web, Error, FromRequest, HttpMessage, HttpRequest, HttpResponse,
 };
 use sqlx::SqlitePool;
 
+use crate::errors::ServiceError;
 use crate::models::user::{CreateUser, LoginUser, SlimUser, User};
 use crate::utils::password::{hash_password, verify};
-use crate::errors::ServiceError;
 
 pub type LoggedUser = SlimUser;
 
@@ -37,7 +38,7 @@ pub async fn register(
 ) -> Result<HttpResponse, ServiceError> {
     let hashed_password = hash_password(&user_data.password)?;
     let user_id = Uuid::new_v4();
-    
+
     let user = sqlx::query_as!(
         User,
         r#"
@@ -68,6 +69,7 @@ pub async fn login(
     user_data: web::Json<LoginUser>,
     pool: web::Data<SqlitePool>,
 ) -> Result<HttpResponse, ServiceError> {
+
     let user = sqlx::query_as!(
         User,
         r#"
@@ -91,11 +93,11 @@ pub async fn login(
     if is_valid {
         let slim_user = SlimUser::from(user);
         println!("logged in: {:?}", &slim_user);
-        let user_string = serde_json::to_string(&slim_user)
-            .map_err(|_| ServiceError::InternalServerError)?;
+        let user_string =
+            serde_json::to_string(&slim_user).map_err(|_| ServiceError::InternalServerError)?;
         Identity::login(&req.extensions(), user_string)
             .map_err(|_| ServiceError::InternalServerError)?;
-        
+
         Ok(HttpResponse::Ok().json(slim_user))
     } else {
         Err(ServiceError::Unauthorized)
@@ -108,7 +110,14 @@ pub async fn logout(identity: Identity) -> HttpResponse {
     HttpResponse::Ok().finish()
 }
 
-#[post("/me")]
-pub async fn get_me(user: LoggedUser) -> HttpResponse {
-    HttpResponse::Ok().json(user)
+#[get("/me")]
+pub async fn get_me(user: Option<Identity>) -> HttpResponse {
+    if let Some(identity) = user {
+        if let Ok(user_json) = identity.id() {
+            if let Ok(user) = serde_json::from_str::<SlimUser>(&user_json) {
+                return HttpResponse::Ok().json(user);
+            }
+        }
+    }
+    HttpResponse::Unauthorized().finish()
 }
