@@ -17,10 +17,13 @@ use actix_session::{
 };
 use actix_web::{cookie::Key, middleware, web, App, HttpServer};
 use api::auth::{get_me, login, logout, register};
+use env_logger::Env;
 use std::time::Duration;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    env_logger::init_from_env(Env::default().default_filter_or("info"));
+
     let redis_store = RedisSessionStore::new("redis://127.0.0.1:6379")
         .await
         .unwrap();
@@ -38,16 +41,12 @@ async fn main() -> std::io::Result<()> {
     let secret_key = Key::generate();
 
     HttpServer::new(move || {
+        let cookie_ttl = Duration::from_secs(2 * 24 * 60 * 60); // 2 days
+
         let identity_middleware = IdentityMiddleware::builder()
-            .visit_deadline(Some(Duration::from_secs(172800))) // 2 days
-            .login_deadline(Some(Duration::from_secs(172800 * 3))) // 6 days
-            .logout_behaviour(LogoutBehaviour::PurgeSession)
-            .build();
-
-        let cookie_ttl = Duration::from_secs(24 * 60 * 60);
-
-        let identity_mw = IdentityMiddleware::builder()
             .visit_deadline(Some(cookie_ttl))
+            .login_deadline(Some(cookie_ttl * 3))
+            .logout_behaviour(LogoutBehaviour::PurgeSession)
             .build();
 
         let session_middleware =
@@ -73,6 +72,7 @@ async fn main() -> std::io::Result<()> {
             .service(profile_page)
     })
     .bind(("127.0.0.1", 8080))?
+    .workers(4)
     .run()
     .await
 }

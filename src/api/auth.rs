@@ -69,7 +69,6 @@ pub async fn login(
     user_data: web::Json<LoginUser>,
     pool: web::Data<SqlitePool>,
 ) -> Result<HttpResponse, ServiceError> {
-
     let user = sqlx::query_as!(
         User,
         r#"
