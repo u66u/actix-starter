@@ -4,6 +4,7 @@ mod errors;
 mod models;
 mod pages;
 mod utils;
+mod templates;
 
 use crate::pages::*;
 use actix_identity::{
@@ -18,10 +19,13 @@ use actix_session::{
 use actix_web::{cookie::Key, middleware, web, App, HttpServer};
 use api::auth::{get_me, login, logout, register};
 use env_logger::Env;
+use utils::config;
 use std::time::Duration;
+use actix_files;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    let app_cfg = config::get_config();
     env_logger::init_from_env(Env::default().default_filter_or("info"));
 
     let redis_store = RedisSessionStore::new("redis://127.0.0.1:6379")
@@ -38,7 +42,8 @@ async fn main() -> std::io::Result<()> {
         .await
         .expect("Failed to run migrations");
 
-    let secret_key = Key::generate();
+
+    let secret_key = Key::from(app_cfg.secret_key.repeat(3).as_bytes());
 
     HttpServer::new(move || {
         let cookie_ttl = Duration::from_secs(2 * 24 * 60 * 60); // 2 days
@@ -70,6 +75,7 @@ async fn main() -> std::io::Result<()> {
             .service(login_page)
             .service(signup_page)
             .service(profile_page)
+            .service(actix_files::Files::new("/assets", "./assets").show_files_listing())
     })
     .bind(("127.0.0.1", 8080))?
     .workers(4)

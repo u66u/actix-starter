@@ -7,6 +7,7 @@ use actix_session::{
 use actix_web::cookie::{time::Duration as CookieDuration, Key};
 use dotenv::dotenv;
 use std::{env, time::Duration};
+use lazy_static::lazy_static;
 
 #[derive(Debug, Clone)]
 pub enum SessionBackend {
@@ -21,7 +22,17 @@ pub struct Config {
     pub server_port: u16,
     pub session_backend: SessionBackend,
     pub secret_key: String,
-    pub cookie_ttl: Duration,
+    pub cookie_ttl_secs: Duration,
+}
+
+lazy_static! {
+    pub static ref CONFIG: Config = {
+        Config::from_env().expect("Failed to load configuration")
+    };
+}
+
+pub fn get_config() -> &'static Config {
+    &CONFIG
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -48,12 +59,14 @@ impl Config {
             .parse::<u16>()
             .map_err(|_| ConfigError::InvalidValue("SERVER_PORT".to_string()))?;
 
-        let server_host = env::var("SERVER_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+        let server_host = env::var("SERVER_HOST")
+            .map_err(|_| ConfigError::MissingEnv("SERVER_HOST".to_string()))?;
 
-        let secret_key = env::var("SECRET_KEY").unwrap_or_else(|_| "0123".repeat(16));
+        let secret_key = env::var("SECRET_KEY")
+            .map_err(|_| ConfigError::MissingEnv("SECRET_KEY".to_string()))?;
 
         let session_backend_str = env::var("SESSION_BACKEND")
-            .unwrap_or_else(|_| "cookies".to_string())
+            .map_err(|_| ConfigError::MissingEnv("SESSION_BACKEND".to_string()))?
             .to_lowercase();
 
         let session_backend = match session_backend_str.as_str() {
@@ -62,11 +75,12 @@ impl Config {
                     .map_err(|_| ConfigError::MissingEnv("REDIS_URL".to_string()))?;
                 SessionBackend::Redis(redis_url)
             }
-            _ => SessionBackend::Cookies,
+            "cookies" => SessionBackend::Cookies,
+            _ => return Err(ConfigError::InvalidValue(format!("SESSION_BACKEND: '{}' is not a valid value (must be 'redis' or 'cookies')", session_backend_str))),
         };
 
         let cookie_ttl_secs = env::var("COOKIE_TTL_SECS")
-            .unwrap_or_else(|_| "172800".to_string())
+            .map_err(|_| ConfigError::MissingEnv("COOKIE_TTL_SECS".to_string()))?
             .parse::<u64>()
             .map_err(|_| ConfigError::InvalidValue("COOKIE_TTL_SECS".to_string()))?;
 
@@ -78,7 +92,7 @@ impl Config {
             server_port,
             session_backend,
             secret_key,
-            cookie_ttl,
+            cookie_ttl_secs: cookie_ttl,
         })
     }
 
@@ -87,14 +101,14 @@ impl Config {
     }
 
     pub fn cookie_ttl_as_cookie_duration(&self) -> CookieDuration {
-        CookieDuration::seconds(self.cookie_ttl.as_secs() as i64)
+        CookieDuration::seconds(self.cookie_ttl_secs.as_secs() as i64)
     }
 }
 
 pub fn identity_middleware(config: &Config) -> IdentityMiddleware {
     IdentityMiddleware::builder()
-        .visit_deadline(Some(config.cookie_ttl))
-        .login_deadline(Some(config.cookie_ttl * 3))
+        .visit_deadline(Some(config.cookie_ttl_secs))
+        .login_deadline(Some(config.cookie_ttl_secs * 3))
         .logout_behaviour(LogoutBehaviour::PurgeSession)
         .build()
 }

@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}My App{% endblock %}</title>
+    <link rel="stylesheet" href="/assets/pico.min.css">
+    {% block extra_styles %}{% endblock %}
+    {% block head_scripts %}{% endblock %}
+</head>
+<body>
+    <h1>{% block header %}{% endblock %}</h1>
+    {% block content %}{% endblock %}
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html> 
