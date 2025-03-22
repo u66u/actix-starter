@@ -1,9 +1,9 @@
 use actix_identity::Identity;
-use actix_web::{HttpResponse, Responder, get};
+use actix_web::{get, web, HttpResponse, Responder};
 use tera::Context;
 use crate::{models::user::SlimUser, templates::TEMPLATES};
 
-#[get("/login-page")]
+#[get("/login")]
 pub async fn render_login_page() -> HttpResponse {
     let context = Context::new();
     match TEMPLATES.render("auth/login.html", &context) {
@@ -15,7 +15,7 @@ pub async fn render_login_page() -> HttpResponse {
     }
 }
 
-#[get("/signup-page")]
+#[get("/signup")]
 pub async fn render_signup_page() -> impl Responder {
     let context = Context::new();
     match TEMPLATES.render("auth/signup.html", &context) {
@@ -27,7 +27,7 @@ pub async fn render_signup_page() -> impl Responder {
     }
 }
 
-#[get("/profile-page")]
+#[get("/profile")]
 pub async fn render_profile_page(identity: Option<Identity>) -> HttpResponse {
     render_profile(identity)
 }

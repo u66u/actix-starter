@@ -31,7 +31,7 @@
         const errorMsg = document.getElementById('error-message');
         
         try {
-            const response = await fetch('/register', {
+            const response = await fetch('/api/v1/auth/signup', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -44,7 +44,7 @@
             });
             
             if (response.ok) {
-                window.location.href = '/login-page';
+                window.location.href = '/login';
             } else {
                 const data = await response.json();
                 errorMsg.textContent = data || 'Registration failed';

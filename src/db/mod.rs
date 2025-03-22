@@ -1,8 +1,5 @@
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
-use sqlx::{PgPool, pool::PoolOptions};
 use std::time::Duration;
-use uuid::Uuid;
-use rand;
 
 use crate::errors::ServiceError;
 use crate::models::user::{CreateUser, User, SlimUser, UserPrivilege};
@@ -19,7 +16,7 @@ pub async fn create_pool() -> Result<SqlitePool, sqlx::Error> {
         .await
 }
 
-pub async fn register_user(
+pub async fn create_user(
     pool: &SqlitePool,
     user_data: &CreateUser,
 ) -> Result<User, ServiceError> {

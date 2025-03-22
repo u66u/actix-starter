@@ -9,7 +9,7 @@ use actix_web::{
 };
 use sqlx::SqlitePool;
 
-use crate::db::{find_user_by_email, register_user};
+use crate::db::{find_user_by_email, create_user};
 use crate::errors::ServiceError;
 use crate::models::user::{CreateUser, LoginUser, SlimUser, User};
 use crate::utils::password::verify;
@@ -32,12 +32,12 @@ impl FromRequest for LoggedUser {
     }
 }
 
-#[post("/register")]
-pub async fn register(
+#[post("/signup")]
+pub async fn signup(
     pool: web::Data<SqlitePool>,
     user_data: web::Json<CreateUser>,
 ) -> Result<HttpResponse, ServiceError> {
-    let user = register_user(pool.get_ref(), &user_data).await?;
+    let user = create_user(pool.get_ref(), &user_data).await?;
     Ok(HttpResponse::Ok().json(SlimUser::from(user)))
 }
 
@@ -77,15 +77,8 @@ pub async fn logout(user: Option<Identity>) -> HttpResponse {
     }
 }
 
-#[get("/me")]
-pub async fn get_me(user: Option<Identity>) -> HttpResponse {
-    if let Some(identity) = user {
-        if let Ok(user_json) = identity.id() {
-            println!("{:?}", user_json);
-            if let Ok(user) = serde_json::from_str::<SlimUser>(&user_json) {
-                return HttpResponse::Ok().json(user);
-            }
-        }
-    }
-    HttpResponse::Unauthorized().finish()
+pub fn configure(cfg: &mut web::ServiceConfig) {
+    cfg.service(signup)
+       .service(login)
+       .service(logout);
 }

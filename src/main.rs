@@ -5,7 +5,7 @@ mod models;
 mod utils;
 mod templates;
 
-use crate::templates::basic::*;
+use templates::configure_templates;
 use actix_identity::{
     config::{IdentityMiddlewareBuilder, LogoutBehaviour},
     Identity, IdentityMiddleware,
@@ -16,7 +16,6 @@ use actix_session::{
     SessionMiddleware,
 };
 use actix_web::{cookie::Key, middleware, web, App, HttpServer};
-use api::auth::{get_me, login, logout, register};
 use env_logger::Env;
 use utils::config;
 use std::time::Duration;
@@ -67,13 +66,11 @@ async fn main() -> std::io::Result<()> {
             .wrap(identity_middleware)
             .wrap(session_middleware)
             .wrap(middleware::Logger::default())
-            .service(register)
-            .service(login)
-            .service(logout)
-            .service(get_me)
-            .service(render_login_page)
-            .service(render_signup_page)
-            .service(render_profile_page)
+            .service(
+                web::scope("/api")
+                    .configure(api::configure_api)
+            )
+            .configure(templates::configure_templates)
             .service(actix_files::Files::new("/static", "./static").show_files_listing())
     })
     .bind(("127.0.0.1", 8080))?
