@@ -6,48 +6,21 @@
 
 {% block content %}
     <div class="profile">
-        <div id="loading">Loading your profile...</div>
-        <div id="profile-info" class="profile-info" style="display: none;">
-            <p><strong>User ID:</strong> <span id="user-id"></span></p>
-            <p><strong>Email:</strong> <span id="user-email"></span></p>
-        </div>
-        <div id="error" style="color: red; display: none;">
-            You are not logged in. <a href="/login-page">Login here</a>
-        </div>
-        <button id="logout-btn" class="logout-btn" onclick="logout()" style="display: none;">Logout</button>
+        {% if is_authenticated %}
+            <div id="profile-info" class="profile-info">
+                <p><strong>User ID:</strong> {{ user.id }}</p>
+                <p><strong>Email:</strong> {{ user.email }}</p>
+                {% if user.name %}
+                <p><strong>Name:</strong> {{ user.name }}</p>
+                {% endif %}
+            </div>
+            <form action="/logout" method="post">
+                <button type="submit" class="logout-btn">Logout</button>
+            </form>
+        {% else %}
+            <div id="error" style="color: red;">
+                You are not logged in. <a href="/login-page">Login here</a>
+            </div>
+        {% endif %}
     </div>
 {% endblock %}
-
-{% block scripts %}
-<script>
-    document.addEventListener('DOMContentLoaded', async () => {
-        try {
-            const response = await fetch('/me');
-            
-            if (response.ok) {
-                const userData = await response.json();
-                document.getElementById('user-id').textContent = userData.id;
-                document.getElementById('user-email').textContent = userData.email;
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('profile-info').style.display = 'block';
-                document.getElementById('logout-btn').style.display = 'block';
-            } else {
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('error').style.display = 'block';
-            }
-        } catch (error) {
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('error').style.display = 'block';
-        }
-    });
-
-    async function logout() {
-        try {
-            await fetch('/logout', { method: 'POST' });
-            window.location.href = '/login-page';
-        } catch (error) {
-            alert('Logout failed. Please try again.');
-        }
-    }
-</script>
-{% endblock %} 

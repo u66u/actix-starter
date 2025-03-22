@@ -5,13 +5,14 @@ use uuid::Uuid;
 
 use actix_identity::Identity;
 use actix_web::{
-    dev::Payload, get, post, web, Error, FromRequest, HttpMessage, HttpRequest, HttpResponse,
+    dev::Payload, get, post, web, Error, FromRequest, HttpMessage, HttpRequest, HttpResponse, ResponseError
 };
 use sqlx::SqlitePool;
 
+use crate::db::{find_user_by_email, register_user};
 use crate::errors::ServiceError;
 use crate::models::user::{CreateUser, LoginUser, SlimUser, User};
-use crate::utils::password::{hash_password, verify};
+use crate::utils::password::verify;
 
 pub type LoggedUser = SlimUser;
 
@@ -36,30 +37,7 @@ pub async fn register(
     pool: web::Data<SqlitePool>,
     user_data: web::Json<CreateUser>,
 ) -> Result<HttpResponse, ServiceError> {
-    let hashed_password = hash_password(&user_data.password)?;
-    let user_id = Uuid::new_v4();
-
-    let user = sqlx::query_as!(
-        User,
-        r#"
-        INSERT INTO users (id, email, hash)
-        VALUES (?1, ?2, ?3)
-        RETURNING id as "id: uuid::Uuid", email, hash, created_at
-        "#,
-        user_id,
-        user_data.email,
-        hashed_password
-    )
-    .fetch_one(pool.get_ref())
-    .await
-    .map_err(|e| {
-        if e.to_string().contains("UNIQUE constraint failed") {
-            ServiceError::BadRequest("Email already exists".into())
-        } else {
-            ServiceError::InternalServerError
-        }
-    })?;
-
+    let user = register_user(pool.get_ref(), &user_data).await?;
     Ok(HttpResponse::Ok().json(SlimUser::from(user)))
 }
 
@@ -69,25 +47,11 @@ pub async fn login(
     user_data: web::Json<LoginUser>,
     pool: web::Data<SqlitePool>,
 ) -> Result<HttpResponse, ServiceError> {
-    let user = sqlx::query_as!(
-        User,
-        r#"
-        SELECT 
-            id as "id: Uuid",
-            email,
-            hash,
-            created_at
-        FROM users 
-        WHERE email = ?
-        "#,
-        user_data.email
-    )
-    .fetch_optional(pool.get_ref())
-    .await
-    .map_err(|_| ServiceError::InternalServerError)?
-    .ok_or(ServiceError::Unauthorized)?;
+    let user = find_user_by_email(pool.get_ref(), &user_data.email)
+        .await?
+        .ok_or(ServiceError::Unauthorized)?;
 
-    let is_valid = verify(&user.hash, &user_data.password)?;
+    let is_valid = verify(&user.hashed_pwd, &user_data.password)?;
 
     if is_valid {
         let slim_user = SlimUser::from(user);
@@ -104,15 +68,20 @@ pub async fn login(
 }
 
 #[post("/logout")]
-pub async fn logout(identity: Identity) -> HttpResponse {
-    identity.logout();
-    HttpResponse::Ok().finish()
+pub async fn logout(user: Option<Identity>) -> HttpResponse {
+    if let Some(id) = user {
+        id.logout();
+        HttpResponse::Ok().finish()
+    } else {
+        HttpResponse::Unauthorized().finish()
+    }
 }
 
 #[get("/me")]
 pub async fn get_me(user: Option<Identity>) -> HttpResponse {
     if let Some(identity) = user {
         if let Ok(user_json) = identity.id() {
+            println!("{:?}", user_json);
             if let Ok(user) = serde_json::from_str::<SlimUser>(&user_json) {
                 return HttpResponse::Ok().json(user);
             }

@@ -2,11 +2,10 @@ mod api;
 mod db;
 mod errors;
 mod models;
-mod pages;
 mod utils;
 mod templates;
 
-use crate::pages::*;
+use crate::templates::basic::*;
 use actix_identity::{
     config::{IdentityMiddlewareBuilder, LogoutBehaviour},
     Identity, IdentityMiddleware,
@@ -72,9 +71,9 @@ async fn main() -> std::io::Result<()> {
             .service(login)
             .service(logout)
             .service(get_me)
-            .service(login_page)
-            .service(signup_page)
-            .service(profile_page)
+            .service(render_login_page)
+            .service(render_signup_page)
+            .service(render_profile_page)
             .service(actix_files::Files::new("/assets", "./assets").show_files_listing())
     })
     .bind(("127.0.0.1", 8080))?
