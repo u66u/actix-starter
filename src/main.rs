@@ -74,7 +74,7 @@ async fn main() -> std::io::Result<()> {
             .service(render_login_page)
             .service(render_signup_page)
             .service(render_profile_page)
-            .service(actix_files::Files::new("/assets", "./assets").show_files_listing())
+            .service(actix_files::Files::new("/static", "./static").show_files_listing())
     })
     .bind(("127.0.0.1", 8080))?
     .workers(4)
