@@ -3,7 +3,7 @@ use tera::Tera;
 use lazy_static::lazy_static;
 
 
-mod basic;
+mod user;
 
 lazy_static! {
     pub static ref TEMPLATES: Tera = {
@@ -14,7 +14,7 @@ lazy_static! {
 }
 
 pub fn configure_templates(cfg: &mut web::ServiceConfig) {
-    cfg.service(basic::render_login_page)
-       .service(basic::render_signup_page)
-       .service(basic::render_profile_page);
+    cfg.service(user::render_login_page)
+       .service(user::render_signup_page)
+       .service(user::render_profile_page);
 }

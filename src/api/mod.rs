@@ -1,7 +1,7 @@
 use actix_web::web;
 
-pub mod auth;
-pub mod user;
+mod auth;
+mod user;
 
 pub fn configure_api(cfg: &mut web::ServiceConfig) {
     cfg.service(
@@ -11,7 +11,7 @@ pub fn configure_api(cfg: &mut web::ServiceConfig) {
                     .configure(auth::configure)
             )
             .service(
-                web::scope("/users")
+                web::scope("/user")
                     .configure(user::configure)
             )
     );

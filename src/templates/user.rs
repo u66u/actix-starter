@@ -16,7 +16,7 @@ pub async fn render_login_page() -> HttpResponse {
 }
 
 #[get("/signup")]
-pub async fn render_signup_page() -> impl Responder {
+pub async fn render_signup_page() -> HttpResponse {
     let context = Context::new();
     match TEMPLATES.render("auth/signup.html", &context) {
         Ok(content) => HttpResponse::Ok().content_type("text/html").body(content),

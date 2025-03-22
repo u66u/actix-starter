@@ -5,7 +5,6 @@ mod models;
 mod utils;
 mod templates;
 
-use templates::configure_templates;
 use actix_identity::{
     config::{IdentityMiddlewareBuilder, LogoutBehaviour},
     Identity, IdentityMiddleware,
