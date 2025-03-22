@@ -6,8 +6,8 @@ use actix_session::{
 };
 use actix_web::cookie::{time::Duration as CookieDuration, Key};
 use dotenv::dotenv;
-use std::{env, time::Duration};
 use lazy_static::lazy_static;
+use std::{env, time::Duration};
 
 #[derive(Debug, Clone)]
 pub enum SessionBackend {
@@ -21,14 +21,13 @@ pub struct Config {
     pub server_host: String,
     pub server_port: u16,
     pub session_backend: SessionBackend,
+    pub redis_url: String,
     pub secret_key: String,
     pub cookie_ttl_secs: Duration,
 }
 
 lazy_static! {
-    pub static ref CONFIG: Config = {
-        Config::from_env().expect("Failed to load configuration")
-    };
+    pub static ref CONFIG: Config = Config::from_env().expect("Failed to load configuration");
 }
 
 pub fn get_config() -> &'static Config {
@@ -76,8 +75,16 @@ impl Config {
                 SessionBackend::Redis(redis_url)
             }
             "cookies" => SessionBackend::Cookies,
-            _ => return Err(ConfigError::InvalidValue(format!("SESSION_BACKEND: '{}' is not a valid value (must be 'redis' or 'cookies')", session_backend_str))),
+            _ => {
+                return Err(ConfigError::InvalidValue(format!(
+                    "SESSION_BACKEND: '{}' is not a valid value (must be 'redis' or 'cookies')",
+                    session_backend_str
+                )))
+            }
         };
+
+        let redis_url =
+            env::var("REDIS_URL").map_err(|_| ConfigError::MissingEnv("REDIS_URL".to_string()))?;
 
         let cookie_ttl_secs = env::var("COOKIE_TTL_SECS")
             .map_err(|_| ConfigError::MissingEnv("COOKIE_TTL_SECS".to_string()))?
@@ -91,6 +98,7 @@ impl Config {
             server_host,
             server_port,
             session_backend,
+            redis_url,
             secret_key,
             cookie_ttl_secs: cookie_ttl,
         })

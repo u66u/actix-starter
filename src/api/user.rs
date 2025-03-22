@@ -1,6 +1,6 @@
-use actix_web::{get, web, HttpResponse};
-use actix_identity::Identity;
 use crate::models::user::SlimUser;
+use actix_identity::Identity;
+use actix_web::{get, web, HttpResponse};
 
 #[get("/me")]
 pub async fn get_me(user: Option<Identity>) -> HttpResponse {

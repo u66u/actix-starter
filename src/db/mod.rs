@@ -2,12 +2,12 @@ use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 use std::time::Duration;
 
 use crate::errors::ServiceError;
-use crate::models::user::{CreateUser, User, SlimUser, UserPrivilege};
+use crate::models::user::{CreateUser, SlimUser, User, UserPrivilege};
+use crate::utils::config::CONFIG;
 use crate::utils::password::hash_password;
 
 pub async fn create_pool() -> Result<SqlitePool, sqlx::Error> {
-    let database_url =
-        std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:db.db?mode=rwc".to_string());
+    let database_url = CONFIG.db_string.clone();
 
     SqlitePoolOptions::new()
         .max_connections(5)
@@ -16,10 +16,7 @@ pub async fn create_pool() -> Result<SqlitePool, sqlx::Error> {
         .await
 }
 
-pub async fn create_user(
-    pool: &SqlitePool,
-    user_data: &CreateUser,
-) -> Result<User, ServiceError> {
+pub async fn create_user(pool: &SqlitePool, user_data: &CreateUser) -> Result<User, ServiceError> {
     let hashed_password = hash_password(&user_data.password)?;
     let privilege = UserPrivilege::User;
 
@@ -53,7 +50,6 @@ pub async fn create_user(
         }
     })?;
 
-    println!("User registered successfully: ID={}", user.id);
     Ok(user)
 }
 

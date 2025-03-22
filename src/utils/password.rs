@@ -3,10 +3,10 @@ use argon2::{self, Config, Variant, Version};
 use once_cell::sync::Lazy;
 use rand::Rng;
 
-pub static SECRET_KEY: Lazy<String> =
-    Lazy::new(|| std::env::var("SECRET_KEY").unwrap_or_else(|_| "0123".repeat(16)));
+use super::config::CONFIG;
 
 pub fn hash_password(password: &str) -> Result<String, ServiceError> {
+    let secret_key = CONFIG.secret_key.clone();
     let mut salt = [0u8; 16];
     rand::rng().fill(&mut salt);
 
@@ -16,7 +16,7 @@ pub fn hash_password(password: &str) -> Result<String, ServiceError> {
         mem_cost: 19456,
         time_cost: 2,
         lanes: 4,
-        secret: SECRET_KEY.as_bytes(),
+        secret: secret_key.as_bytes(),
         ad: &[],
         hash_length: 32,
     };
@@ -28,7 +28,8 @@ pub fn hash_password(password: &str) -> Result<String, ServiceError> {
 }
 
 pub fn verify(hash: &str, password: &str) -> Result<bool, ServiceError> {
-    argon2::verify_encoded_ext(hash, password.as_bytes(), SECRET_KEY.as_bytes(), &[]).map_err(
+    let secret_key = CONFIG.secret_key.clone();
+    argon2::verify_encoded_ext(hash, password.as_bytes(), secret_key.as_bytes(), &[]).map_err(
         |err| {
             dbg!(err);
             ServiceError::Unauthorized

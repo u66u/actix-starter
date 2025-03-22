@@ -1,15 +1,13 @@
-use chrono::NaiveDateTime;
 use std::future::{ready, Ready};
-use std::time::Instant;
-use uuid::Uuid;
 
 use actix_identity::Identity;
 use actix_web::{
-    dev::Payload, get, post, web, Error, FromRequest, HttpMessage, HttpRequest, HttpResponse, ResponseError
+    dev::Payload, get, post, web, Error, FromRequest, HttpMessage, HttpRequest, HttpResponse,
+    ResponseError,
 };
 use sqlx::SqlitePool;
 
-use crate::db::{find_user_by_email, create_user};
+use crate::db::{create_user, find_user_by_email};
 use crate::errors::ServiceError;
 use crate::models::user::{CreateUser, LoginUser, SlimUser, User};
 use crate::utils::password::verify;
@@ -55,7 +53,6 @@ pub async fn login(
 
     if is_valid {
         let slim_user = SlimUser::from(user);
-        println!("logged in: {:?}", &slim_user);
         let user_string =
             serde_json::to_string(&slim_user).map_err(|_| ServiceError::InternalServerError)?;
         Identity::login(&req.extensions(), user_string)
@@ -78,7 +75,5 @@ pub async fn logout(user: Option<Identity>) -> HttpResponse {
 }
 
 pub fn configure(cfg: &mut web::ServiceConfig) {
-    cfg.service(signup)
-       .service(login)
-       .service(logout);
+    cfg.service(signup).service(login).service(logout);
 }

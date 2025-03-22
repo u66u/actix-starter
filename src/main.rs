@@ -2,9 +2,10 @@ mod api;
 mod db;
 mod errors;
 mod models;
-mod utils;
 mod templates;
+mod utils;
 
+use actix_files;
 use actix_identity::{
     config::{IdentityMiddlewareBuilder, LogoutBehaviour},
     Identity, IdentityMiddleware,
@@ -16,16 +17,14 @@ use actix_session::{
 };
 use actix_web::{cookie::Key, middleware, web, App, HttpServer};
 use env_logger::Env;
-use utils::config;
-use std::time::Duration;
-use actix_files;
+use utils::config::{self, CONFIG};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let app_cfg = config::get_config();
+    let app_cfg = CONFIG.clone();
     env_logger::init_from_env(Env::default().default_filter_or("info"));
 
-    let redis_store = RedisSessionStore::new("redis://127.0.0.1:6379")
+    let redis_store = RedisSessionStore::new(app_cfg.redis_url.clone())
         .await
         .unwrap();
 
@@ -33,17 +32,15 @@ async fn main() -> std::io::Result<()> {
         .await
         .expect("Failed to create database pool");
 
-    // Run migrations
     sqlx::migrate!("./migrations")
         .run(&pool)
         .await
         .expect("Failed to run migrations");
 
-
-    let secret_key = Key::from(app_cfg.secret_key.repeat(3).as_bytes());
+    let secret_key = Key::from(app_cfg.secret_key.as_bytes());
 
     HttpServer::new(move || {
-        let cookie_ttl = Duration::from_secs(2 * 24 * 60 * 60); // 2 days
+        let cookie_ttl = app_cfg.cookie_ttl_secs;
 
         let identity_middleware = IdentityMiddleware::builder()
             .visit_deadline(Some(cookie_ttl))
@@ -65,14 +62,11 @@ async fn main() -> std::io::Result<()> {
             .wrap(identity_middleware)
             .wrap(session_middleware)
             .wrap(middleware::Logger::default())
-            .service(
-                web::scope("/api")
-                    .configure(api::configure_api)
-            )
+            .service(web::scope("/api").configure(api::configure_api))
             .configure(templates::configure_templates)
             .service(actix_files::Files::new("/static", "./static").show_files_listing())
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind((app_cfg.server_host.clone(), app_cfg.server_port))?
     .workers(4)
     .run()
     .await

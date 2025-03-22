@@ -2,7 +2,6 @@ use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
-
 #[derive(Debug, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(type_name = "TEXT")]
 #[sqlx(rename_all = "lowercase")]
@@ -10,7 +9,7 @@ pub enum UserPrivilege {
     User,
     Vip,
     Mod,
-    Admin
+    Admin,
 }
 
 #[derive(Debug, Serialize, FromRow)]
@@ -29,7 +28,7 @@ pub struct User {
 pub struct SlimUser {
     pub id: u64,
     pub email: String,
-    pub name: Option<String>
+    pub name: Option<String>,
 }
 
 impl From<User> for SlimUser {
@@ -37,7 +36,7 @@ impl From<User> for SlimUser {
         SlimUser {
             id: user.id,
             email: user.email,
-            name: user.name
+            name: user.name,
         }
     }
 }
